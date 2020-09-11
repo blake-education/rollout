@@ -38,9 +38,6 @@ class Rollout
   end
 
   def delete(feature)
-    features = (@storage.get(features_key) || '').split(',')
-    features.delete(feature.to_s)
-    @storage.set(features_key, features.join(','))
     @storage.del(key(feature))
 
     if respond_to?(:logging)
@@ -161,7 +158,7 @@ class Rollout
   end
 
   def features
-    (@storage.get(features_key) || '').split(',').map(&:to_sym)
+    @storage.keys(key('*')).map { |k| k.delete_prefix(prefix()).to_sym }
   end
 
   def feature_states(user = nil)
@@ -181,8 +178,6 @@ class Rollout
       with_feature(feature, &:clear)
       @storage.del(key(feature))
     end
-
-    @storage.del(features_key)
   end
 
   def exists?(feature)
@@ -212,16 +207,14 @@ class Rollout
 
   private
 
-  def key(name)
-    "feature:#{name}"
-  end
+  def prefix()
+    'feature:'
 
-  def features_key
-    'feature:__features__'
+  def key(name)
+    prefix + name
   end
 
   def save(feature)
     @storage.set(key(feature.name), feature.serialize)
-    @storage.set(features_key, (features | [feature.name.to_sym]).join(','))
   end
 end
